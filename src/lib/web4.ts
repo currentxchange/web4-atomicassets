@@ -47,7 +47,7 @@ export async function checkCollectionSchemas(collectionName: string, fieldsToChe
 
 export async function getTemplatesWithFields(collectionName: string, fieldsToCheck: string[] = defaultFields): Promise<object> {
     try {
-        const schemaFieldData = await checkCollectionSchemas(collectionName, fields);
+        const schemaFieldData = await checkCollectionSchemas(collectionName, fieldsToCheck);
         return schemaFieldData;
     } catch (error) {
         console.log('Error retrieving templates with fields:', error);
