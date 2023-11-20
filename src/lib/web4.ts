@@ -4,24 +4,44 @@ import { ExplorerApi, RpcApi } from "atomicassets";
 
 const defaultFields = ["timestamp", "date", "year", "month", "day", "location", "nation", "state", "city", "geotag"];
 
+
 /**
- * Checks collection schemas and templates for specific fields.
+ * Retrieves schemas from a collection that contain specific fields, aggregated across templates.
  * @param collectionName The name of the collection to check.
- * @param fieldsToCheck Array of fields to check for in the templates. Defaults to a predefined set.
- * @returns Promise<object> A multidimensional object with schema names and templates containing the relevant fields.
+ * @param fieldsToCheck Array of fields to check for in the schemas. Defaults to a predefined set.
+ * @returns Promise<object> Object with schema names and an array of fields present in that schema.
  */
-export async function checkCollectionSchemas(collectionName: string, fieldsToCheck: string[] = defaultFields): Promise<object> {
+export async function getSchemasWithFields(collectionName, fieldsToCheck = defaultFields) {
+    console.log(`Getting schemas with fields for collection '${collectionName}'`);
+    try {
+        const templatesData = await getTemplatesWithFields(collectionName, fieldsToCheck);
+        let schemaFieldAggregation = {};
+
+        for (const schemaName in templatesData) {
+            let aggregatedFields = new Set();
+            for (const templateId in templatesData[schemaName]) {
+                templatesData[schemaName][templateId].forEach(field => aggregatedFields.add(field));
+            }
+            schemaFieldAggregation[schemaName] = Array.from(aggregatedFields);
+        }
+
+        console.log('Aggregated schema fields:', schemaFieldAggregation);
+        return schemaFieldAggregation;
+    } catch (error) {
+        console.error('Error retrieving schemas with aggregated fields:', error);
+    }
+}
+
+
+
+export async function getTemplatesWithFields(collectionName: string, fieldsToCheck: string[] = defaultFields): Promise<object> {
     try {
         const explorerApi = new ExplorerApi("https://wax.api.atomicassets.io", "atomicassets", {fetch});
         const schemas = await explorerApi.getSchemas({ collection_name: collectionName });
-
-        console.log("schemas found");
         
         if (!schemas || schemas.length === 0) {
             throw new Error('Schemas not found for collection');
         }
-
-
         let schemaFieldData = {};
         for (const schema of schemas) {
             const templates = await explorerApi.getTemplates({ schema_name: schema.schema_name });
@@ -44,29 +64,27 @@ export async function checkCollectionSchemas(collectionName: string, fieldsToChe
     }
 }
 
-
-export async function getTemplatesWithFields(collectionName: string, fieldsToCheck: string[] = defaultFields): Promise<object> {
-    try {
-        const schemaFieldData = await checkCollectionSchemas(collectionName, fieldsToCheck);
-        return schemaFieldData;
-    } catch (error) {
-        console.log('Error retrieving templates with fields:', error);
-    }
-}
-
-
-export async function getNFTsWithFields(collectionName: string, fieldsToCheck: string[] = defaultFields): Promise<any[]> {
+export async function getNFTsWithFields(collectionName, fieldsToCheck = defaultFields) {
     try {
         const explorerApi = new ExplorerApi("https://wax.api.atomicassets.io", "atomicassets", {fetch});
-        const verifiedSchemas = await checkCollectionSchemas(collectionName);
-        const nfts = await explorerApi.getAssets({ collection_name: collectionName });
+        // Fetch templates containing the specified fields
+        const filteredTemplates = await getTemplatesWithFields(collectionName, fieldsToCheck);
+        const templateIds = Object.keys(filteredTemplates); // Get only the template IDs
 
-        return nfts.filter(nft => {
-            const schemaName = nft.schema.schema_name;
-            const templateId = nft.template.template_id;
-            return verifiedSchemas[schemaName] && verifiedSchemas[schemaName][templateId];
+        if (templateIds.length === 0) {
+            console.log('No templates found with the specified fields');
+            return [];
+        }
+
+        // Fetch NFTs for all the filtered template IDs in one call
+        const nfts = await explorerApi.getAssets({
+            collection_name: collectionName,
+            template_ids: templateIds.join(',')
         });
+
+        console.log('Retrieved NFTs with specified fields:', nfts);
+        return nfts.map(nft => nft.asset_id); // Returning only the asset IDs for simplicity
     } catch (error) {
-        console.log('Error retrieving NFTs with fields:', error);
+        console.error('Error retrieving NFTs with fields:', error);
     }
 }

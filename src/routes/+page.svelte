@@ -1,6 +1,6 @@
 <script>
     import { writable } from 'svelte/store';
-    import { checkCollectionSchemas, getTemplatesWithFields, getNFTsWithFields } from '../lib/web4.ts'; // Replace with the actual path to your library
+    import { getSchemasWithFields, getTemplatesWithFields, getNFTsWithFields } from '../lib/web4.ts'; // Replace with the actual path to your library
 
     const collectionResult = writable({});
     const templateResult = writable({});
@@ -11,10 +11,10 @@
     // Function to get schemas
     async function fetchCollectionSchemas() {
         try {
-            const result = await checkCollectionSchemas(collectionName, fields);
+            const result = await getSchemasWithFields(collectionName, fields);
             collectionResult.set(result);
         } catch (error) {
-            console.log('Error in checkCollectionSchemas:', error);
+            console.log('Error in getSchemasWithFields:', error);
         }
     }
 
@@ -44,7 +44,7 @@
 <button on:click={fetchTemplatesWithFields}>Get Templates with Fields</button>
 <button on:click={fetchNFTsWithFields}>Get NFTs with Fields</button>
 
-<p>Results from checkCollectionSchemas:</p>
+<p>Results from getSchemasWithFields:</p>
 <pre>{$collectionResult
         ? JSON.stringify($collectionResult, null, 2)
         : "Loading..."}</pre>
